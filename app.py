@@ -55,13 +55,13 @@ st.markdown("""
                 processEscapes: true,
                 processEnvironments: true
             },
-            options: {
-                skipHtmlTags: ['script', 'noscript', 'style', 'textarea']
+            svg: {
+                fontCache: 'global'
             }
         };
     </script>
     <script type="text/javascript" id="MathJax-script" async
-        src="https://raw.githubusercontent.com/mathjax/MathJax/refs/heads/master/es5/tex-chtml-full.js">
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
     </script>
 """, unsafe_allow_html=True)
 
@@ -390,17 +390,17 @@ if prompt := st.chat_input("Ask about your documents..."):
         
         # 🚀 Structured Prompt
         latex_examples = """
-1. Inline math: Use $...$ for inline equations
-   Examples: $E = mc^2$, $\\sqrt{x^2 + y^2}$, $f(x) = ax^2 + bx + c$
+1. Inline math: Use $$...$$ for inline equations
+   Examples: $$E = mc^2$$, $$\\sqrt{x^2 + y^2}$, $f(x) = ax^2 + bx + c$$
 2. Display math: Use $$...$$ for centered equations
    Example:
    $$F(x) = \\int_{-\\infty}^x f(t) dt$$
 3. Common notation:
-   - Fractions: $\\frac{numerator}{denominator}$
-   - Subscripts: $x_1, x_2, x_n$
-   - Superscripts: $x^2, e^x$
-   - Greek letters: $\\alpha, \\beta, \\gamma, \\theta$
-   - Sums and products: $\\sum_{i=1}^n x_i$, $\\prod_{i=1}^n x_i$"""
+   - Fractions: $$\\frac{numerator}{denominator}$$
+   - Subscripts: $$x_1, x_2, x_n$$
+   - Superscripts: $$x^2, e^x$$
+   - Greek letters: $$\\alpha, \\beta, \\gamma, \\theta$$
+   - Sums and products: $$\\sum_{i=1}^n x_i$, $\\prod_{i=1}^n x_i$$"""
 
         system_prompt = f"""Use the chat history to maintain context:
             Chat History:
@@ -474,17 +474,6 @@ if prompt := st.chat_input("Ask about your documents..."):
                     # Stop if we detect the end token
                     if data.get("done", False):
                         break
-                        
-            # Check for unclosed think tags
-            last_think = full_response.rfind("<think>")
-            if last_think != -1 and "</think>" not in full_response[last_think:]:
-                # Add timing for the unclosed think section
-                if last_think not in thinking_times:
-                    thinking_times[last_think] = time.time()
-                if last_think not in st.session_state.final_think_times:
-                    st.session_state.final_think_times[last_think] = time.time() - thinking_times[last_think]
-                full_response = full_response + "</think>"
-                formatted_response = format_sections(full_response)
             
             response_placeholder.markdown(formatted_response, unsafe_allow_html=True)
             # Store the original response with think tags in session state
