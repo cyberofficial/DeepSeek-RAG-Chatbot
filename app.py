@@ -56,7 +56,7 @@ st.markdown("""
                 processEnvironments: true
             },
             options: {
-                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea']
             }
         };
     </script>
@@ -269,6 +269,24 @@ with st.sidebar:                                                                
         st.success("Embeddings have been reset. You can now upload new documents.")
         st.rerun()
 
+    if st.button("Save Chat"):
+        if st.session_state.messages:
+            timestamp = time.strftime("%Y%m%d-%H%M%S")
+            filename = f"chat_session_{timestamp}.txt"
+            chat_content = ""
+            
+            for msg in st.session_state.messages:
+                chat_content += f"[{msg['role'].upper()}]:\n{msg['content']}\n\n"
+            
+            # Create download button for the saved chat
+            st.download_button(
+                label="📥 Download Chat",
+                data=chat_content,
+                file_name=filename,
+                mime="text/plain"
+            )
+            st.success(f"Chat ready for download!")
+
     if st.button("Clear Chat History"):
         st.session_state.messages = []
         st.rerun()
@@ -380,6 +398,9 @@ if prompt := st.chat_input("Ask about your documents..."):
             2. Check for contradictions between sources
             3. Synthesize information from multiple contexts
             4. Formulate a structured response
+
+            Tools:
+            1. You have access to MathJax for LaTeX support when dealing with mathematical equations.
 
             Context:
             {context}
