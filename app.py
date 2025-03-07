@@ -273,10 +273,61 @@ with st.sidebar:                                                                
         if st.session_state.messages:
             timestamp = time.strftime("%Y%m%d-%H%M%S")
             filename = f"chat_session_{timestamp}.txt"
-            chat_content = ""
+            chat_content = "=== Chat Session Settings ===\n"
+            
+            # Save RAG settings
+            chat_content += "\n[RAG SETTINGS]\n"
+            chat_content += f"RAG Enabled: {st.session_state.rag_enabled}\n"
+            chat_content += f"HyDE Enabled: {st.session_state.enable_hyde}\n"
+            chat_content += f"Neural Reranking: {st.session_state.enable_reranking}\n"
+            chat_content += f"GraphRAG: {st.session_state.enable_graph_rag}\n"
+            chat_content += f"Temperature: {st.session_state.temperature}\n"
+            chat_content += f"Max Contexts: {st.session_state.max_contexts}\n"
+            chat_content += f"Context Window Size: {st.session_state.num_ctx}\n"
+            chat_content += f"Chunk Size: {st.session_state.chunk_size}\n"
+            chat_content += f"Chunk Overlap: {st.session_state.chunk_overlap}\n\n"
+            
+            chat_content += "=== Chat Messages ===\n\n"
             
             for msg in st.session_state.messages:
-                chat_content += f"[{msg['role'].upper()}]:\n{msg['content']}\n\n"
+                chat_content += f"[{msg['role'].upper()}]:\n{msg['content']}\n"
+                
+                # Include RAG information for assistant messages
+                if msg['role'] == "assistant":
+                    # First add the actual RAG context that was used
+                    if "rag_context" in msg:
+                        chat_content += "\n[RAG CONTEXT USED]:\n"
+                        chat_content += msg["rag_context"] + "\n"
+                    
+                    # Then extract GraphRAG sections
+                    content = msg['content']
+                    sections = [
+                        "GraphRAG Search",
+                        "GraphRAG Matches",
+                        "Related Nodes",
+                        "Retrieved Nodes"
+                    ]
+                    
+                    chat_content += "\n[GRAPHRAG DETAILS]:\n"
+                    for section in sections:
+                        start = content.find(section)
+                        if start != -1:
+                            chat_content += f"--- {section} ---\n"
+                            # Find the content between this section and the next one
+                            next_start = float('inf')
+                            for next_section in sections:
+                                temp = content.find(next_section, start + len(section))
+                                if temp != -1 and temp < next_start:
+                                    next_start = temp
+                            
+                            if next_start == float('inf'):
+                                section_content = content[start:]
+                            else:
+                                section_content = content[start:next_start]
+                            
+                            chat_content += f"{section_content}\n"
+                
+                chat_content += "\n" + "="*50 + "\n\n"
             
             # Create download button for the saved chat
             st.download_button(
@@ -476,8 +527,12 @@ if prompt := st.chat_input("Ask about your documents..."):
                         break
             
             response_placeholder.markdown(formatted_response, unsafe_allow_html=True)
-            # Store the original response with think tags in session state
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
+            # Store the original response with think tags and RAG context in session state
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": full_response,
+                "rag_context": context if context else "No RAG context used"
+            })
             
         except Exception as e:
             st.error(f"Generation error: {str(e)}")
