@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import json
+import time
 from utils.retriever_pipeline import retrieve_documents
 from utils.doc_handler import process_documents
 from sentence_transformers import CrossEncoder
@@ -79,6 +80,8 @@ if "ocr_processed_pdf" not in st.session_state:
     st.session_state.ocr_processed_pdf = None
 if "ocr_processed_name" not in st.session_state:
     st.session_state.ocr_processed_name = None
+if "final_think_times" not in st.session_state:
+    st.session_state.final_think_times = {}
 
 
 with st.sidebar:                                                                        # 📁 Sidebar
@@ -182,6 +185,9 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 if prompt := st.chat_input("Ask about your documents..."):
+    # Reset think times for new conversation
+    st.session_state.final_think_times = {}
+    
     chat_history = "\n".join([msg["content"] for msg in st.session_state.messages[-5:]])  # Last 5 messages
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -221,6 +227,9 @@ if prompt := st.chat_input("Ask about your documents..."):
             Question: {prompt}
             Answer:"""
         
+        # Initialize dictionary to store thinking section start times
+        thinking_times = {}
+        
         # Stream response
         response = requests.post(
             OLLAMA_API_URL,
@@ -247,15 +256,28 @@ if prompt := st.chat_input("Ask about your documents..."):
                     thinking_start = formatted_response.find("<think>")
                     
                     while thinking_start != -1:
+                        # Store start time if this is a new thinking section
+                        if thinking_start not in thinking_times:
+                            thinking_times[thinking_start] = time.time()
+                            
                         thinking_end = formatted_response.find("</think>", thinking_start)
                         if thinking_end != -1:
                             # Get the thinking content
                             think_content = formatted_response[thinking_start + 7:thinking_end]
                             
-                            # Replace the thinking section with collapsible HTML
+                            # Calculate and store the final time for this section if not already stored
+                            if thinking_start not in st.session_state.get('final_think_times', {}):
+                                if 'final_think_times' not in st.session_state:
+                                    st.session_state.final_think_times = {}
+                                st.session_state.final_think_times[thinking_start] = time.time() - thinking_times[thinking_start]
+                            
+                            # Use the stored final time
+                            think_elapsed = st.session_state.final_think_times[thinking_start]
+                            
+                            # Replace the thinking section with collapsible HTML including timing
                             formatted_response = (
                                 formatted_response[:thinking_start] +
-                                f'<details><summary>Thinking Process</summary>{think_content}</details>' +
+                                f'<details><summary>Thinking Process ({think_elapsed:.2f}s)</summary>{think_content}</details>' +
                                 formatted_response[thinking_end + 8:]
                             )
                             
