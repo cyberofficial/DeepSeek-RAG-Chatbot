@@ -90,6 +90,8 @@ if "final_think_times" not in st.session_state:
     st.session_state.final_think_times = {}
 if "ocr_available" not in st.session_state:
     st.session_state.ocr_available = ocr_available
+if "num_ctx" not in st.session_state:
+    st.session_state.num_ctx = 4096
 
 
 with st.sidebar:                                                                        # 📁 Sidebar
@@ -174,6 +176,7 @@ with st.sidebar:                                                                
     st.session_state.enable_graph_rag = st.checkbox("Enable GraphRAG", value=True)
     st.session_state.temperature = st.slider("Temperature", 0.0, 1.0, 0.3, 0.05)
     st.session_state.max_contexts = st.number_input("Max Contexts", value=3, min_value=1, help="Number of context passages to retrieve")
+    st.session_state.num_ctx = st.number_input("Context Window Size", value=4096, min_value=512, help="Size of the model's context window (in tokens)")
     
     if st.button("Reset Embeddings"):
         st.session_state.retrieval_pipeline = None
@@ -256,7 +259,7 @@ if prompt := st.chat_input("Ask about your documents..."):
                 "stream": True,
                 "options": {
                     "temperature": st.session_state.temperature,  # Use dynamic user-selected value
-                    "num_ctx": 4096
+                    "num_ctx": st.session_state.num_ctx
                 }
             },
             stream=True
