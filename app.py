@@ -173,7 +173,7 @@ with st.sidebar:                                                                
     st.session_state.enable_reranking = st.checkbox("Enable Neural Reranking", value=True)
     st.session_state.enable_graph_rag = st.checkbox("Enable GraphRAG", value=True)
     st.session_state.temperature = st.slider("Temperature", 0.0, 1.0, 0.3, 0.05)
-    st.session_state.max_contexts = st.slider("Max Contexts", 1, 5, 3)
+    st.session_state.max_contexts = st.number_input("Max Contexts", value=3, min_value=1, help="Number of context passages to retrieve")
     
     if st.button("Reset Embeddings"):
         st.session_state.retrieval_pipeline = None
