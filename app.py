@@ -401,6 +401,8 @@ if prompt := st.chat_input("Ask about your documents..."):
 
             Tools:
             1. You have access to MathJax for LaTeX support when dealing with mathematical equations.
+                inlineMath: [['$','$'], ['\\(','\\)']],
+                displayMath: [['$$','$$'], ['\\[','\\]']],
 
             Context:
             {context}
@@ -460,6 +462,17 @@ if prompt := st.chat_input("Ask about your documents..."):
                     if data.get("done", False):
                         break
                         
+            # Check for unclosed think tags
+            last_think = full_response.rfind("<think>")
+            if last_think != -1 and "</think>" not in full_response[last_think:]:
+                # Add timing for the unclosed think section
+                if last_think not in thinking_times:
+                    thinking_times[last_think] = time.time()
+                if last_think not in st.session_state.final_think_times:
+                    st.session_state.final_think_times[last_think] = time.time() - thinking_times[last_think]
+                full_response = full_response + "</think>"
+                formatted_response = format_sections(full_response)
+            
             response_placeholder.markdown(formatted_response, unsafe_allow_html=True)
             # Store the original response with think tags in session state
             st.session_state.messages.append({"role": "assistant", "content": full_response})
