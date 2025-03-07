@@ -6,7 +6,18 @@ from utils.doc_handler import process_documents
 from sentence_transformers import CrossEncoder
 import torch
 import os
+import ocrmypdf
+from io import BytesIO
 from dotenv import load_dotenv, find_dotenv
+
+# Custom class to mimic StreamlitUploadedFile
+class CustomUploadedFile:
+    def __init__(self, name, data):
+        self.name = name
+        self._data = data
+
+    def getbuffer(self):
+        return self._data
 torch.classes.__path__ = [os.path.join(torch.__path__[0], torch.classes.__file__)]  # Fix for torch classes not found error
 load_dotenv(find_dotenv())  # Loads .env file contents into the application based on key-value pairs defined therein, making them accessible via 'os' module functions like os.getenv().
 
@@ -36,6 +47,21 @@ st.markdown("""
         .stChatMessage.user { background-color: #e8f0fe; }
         .stChatMessage.assistant { background-color: #d1e7dd; }
         .stButton>button { background-color: #00AAFF; color: white; }
+        .st-emotion-cache-bm2z3a { background-color: black; }
+        details {
+            background-color: black;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 5px 0;
+        }
+        details summary {
+            cursor: pointer;
+            color: #00AAFF;
+            font-weight: bold;
+        }
+        details[open] summary {
+            margin-bottom: 10px;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -49,6 +75,10 @@ if "rag_enabled" not in st.session_state:
     st.session_state.rag_enabled = False
 if "documents_loaded" not in st.session_state:
     st.session_state.documents_loaded = False
+if "ocr_processed_pdf" not in st.session_state:
+    st.session_state.ocr_processed_pdf = None
+if "ocr_processed_name" not in st.session_state:
+    st.session_state.ocr_processed_name = None
 
 
 with st.sidebar:                                                                        # 📁 Sidebar
@@ -63,6 +93,63 @@ with st.sidebar:                                                                
         with st.spinner("Processing documents..."):
             process_documents(uploaded_files,reranker,EMBEDDINGS_MODEL, OLLAMA_BASE_URL)
             st.success("Documents processed!")
+    
+    st.markdown("---")
+    st.header("📑 PDF OCR")
+    ocr_file = st.file_uploader("Upload PDF for OCR", type=["pdf"], key="ocr_upload")
+    
+    if ocr_file and (st.session_state.ocr_processed_name != ocr_file.name):
+        try:
+            # Save uploaded file temporarily
+            with st.spinner("Processing OCR..."):
+                temp_input = f"temp_{ocr_file.name}"
+                temp_output = f"temp_ocr_{ocr_file.name}"
+                
+                # Save uploaded file
+                with open(temp_input, "wb") as f:
+                    f.write(ocr_file.getbuffer())
+                
+                # Process OCR
+                ocrmypdf.ocr(temp_input, temp_output, deskew=True, force_ocr=True)
+                
+                # Read processed file for download
+                with open(temp_output, "rb") as f:
+                    st.session_state.ocr_processed_pdf = f.read()
+                    st.session_state.ocr_processed_name = ocr_file.name
+                
+                # Clean up temp files
+                os.remove(temp_input)
+                os.remove(temp_output)
+        except Exception as e:
+            st.error(f"Error during OCR processing: {str(e)}")
+            st.session_state.ocr_processed_pdf = None
+            st.session_state.ocr_processed_name = None
+
+    # Show download button and use file button if we have processed content
+    if st.session_state.ocr_processed_pdf is not None:
+        col1, col2 = st.columns(2)
+        with col1:
+            st.download_button(
+                label="Download OCR'd PDF",
+                data=st.session_state.ocr_processed_pdf,
+                file_name=f"ocr_{st.session_state.ocr_processed_name}",
+                mime="application/pdf"
+            )
+        with col2:
+            if st.button("Use File for RAG"):
+                # Create a CustomUploadedFile instance
+                custom_file = CustomUploadedFile(
+                    name=st.session_state.ocr_processed_name,
+                    data=st.session_state.ocr_processed_pdf
+                )
+                
+                # Process the file with document management
+                try:
+                    process_documents([custom_file], reranker, EMBEDDINGS_MODEL, OLLAMA_BASE_URL)
+                    st.success("OCR'd PDF added to document management!")
+                    st.session_state.documents_loaded = True
+                except Exception as e:
+                    st.error(f"Error processing file: {str(e)}")
     
     st.markdown("---")
     st.header("⚙️ RAG Settings")
@@ -154,13 +241,38 @@ if prompt := st.chat_input("Ask about your documents..."):
                     data = json.loads(line.decode())
                     token = data.get("response", "")
                     full_response += token
-                    response_placeholder.markdown(full_response + "▌")
+                    
+                    # Format the response to make thinking sections collapsible
+                    formatted_response = full_response
+                    thinking_start = formatted_response.find("<think>")
+                    
+                    while thinking_start != -1:
+                        thinking_end = formatted_response.find("</think>", thinking_start)
+                        if thinking_end != -1:
+                            # Get the thinking content
+                            think_content = formatted_response[thinking_start + 7:thinking_end]
+                            
+                            # Replace the thinking section with collapsible HTML
+                            formatted_response = (
+                                formatted_response[:thinking_start] +
+                                f'<details><summary>Thinking Process</summary>{think_content}</details>' +
+                                formatted_response[thinking_end + 8:]
+                            )
+                            
+                            # Look for next thinking section
+                            thinking_start = formatted_response.find("<think>")
+                        else:
+                            break
+                    
+                    # Display the formatted response
+                    response_placeholder.markdown(formatted_response + "▌", unsafe_allow_html=True)
                     
                     # Stop if we detect the end token
                     if data.get("done", False):
                         break
                         
-            response_placeholder.markdown(full_response)
+            response_placeholder.markdown(formatted_response, unsafe_allow_html=True)
+            # Store the original response with think tags in session state
             st.session_state.messages.append({"role": "assistant", "content": full_response})
             
         except Exception as e:
