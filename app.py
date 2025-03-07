@@ -111,9 +111,30 @@ with st.sidebar:                                                                
     )
     
     if uploaded_files and not st.session_state.documents_loaded:
-        with st.spinner("Processing documents..."):
-            process_documents(uploaded_files,reranker,EMBEDDINGS_MODEL, OLLAMA_BASE_URL)
-            st.success("Documents processed!")
+        # Create columns for progress bar and status
+        progress_col, status_col = st.columns([2, 3])
+        
+        with progress_col:
+            progress_bar = st.progress(0)
+        with status_col:
+            status_text = st.empty()
+            
+        try:
+            process_documents(
+                uploaded_files,
+                reranker,
+                EMBEDDINGS_MODEL,
+                OLLAMA_BASE_URL,
+                progress_bar=progress_bar,
+                status_text=status_text
+            )
+            st.success("✅ Documents processed successfully!")
+        except Exception as e:
+            st.error(f"❌ Error processing documents: {str(e)}")
+        finally:
+            # Clean up progress indicators
+            progress_bar.empty()
+            status_text.empty()
     
     st.markdown("---")
     st.header("📑 PDF OCR")
