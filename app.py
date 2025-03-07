@@ -61,7 +61,7 @@ st.markdown("""
         };
     </script>
     <script type="text/javascript" id="MathJax-script" async
-        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+        src="https://raw.githubusercontent.com/mathjax/MathJax/refs/heads/master/es5/tex-chtml-full.js">
     </script>
 """, unsafe_allow_html=True)
 
@@ -389,6 +389,19 @@ if prompt := st.chat_input("Ask about your documents..."):
                 st.error(f"Retrieval error: {str(e)}")
         
         # 🚀 Structured Prompt
+        latex_examples = """
+1. Inline math: Use $...$ for inline equations
+   Examples: $E = mc^2$, $\\sqrt{x^2 + y^2}$, $f(x) = ax^2 + bx + c$
+2. Display math: Use $$...$$ for centered equations
+   Example:
+   $$F(x) = \\int_{-\\infty}^x f(t) dt$$
+3. Common notation:
+   - Fractions: $\\frac{numerator}{denominator}$
+   - Subscripts: $x_1, x_2, x_n$
+   - Superscripts: $x^2, e^x$
+   - Greek letters: $\\alpha, \\beta, \\gamma, \\theta$
+   - Sums and products: $\\sum_{i=1}^n x_i$, $\\prod_{i=1}^n x_i$"""
+
         system_prompt = f"""Use the chat history to maintain context:
             Chat History:
             {chat_history}
@@ -399,10 +412,10 @@ if prompt := st.chat_input("Ask about your documents..."):
             3. Synthesize information from multiple contexts
             4. Formulate a structured response
 
-            Tools:
-            1. You have access to MathJax for LaTeX support when dealing with mathematical equations.
-                inlineMath: [['$','$'], ['\\(','\\)']],
-                displayMath: [['$$','$$'], ['\\[','\\]']],
+            LaTeX Instructions:
+            Use LaTeX syntax for all mathematical expressions. Here are examples:
+            {latex_examples}
+            Always wrap mathematical expressions in proper LaTeX delimiters ($...$ or $$...$$).
 
             Context:
             {context}
