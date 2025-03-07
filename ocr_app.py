@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import time
+import uuid
 
 # Try to import ocrmypdf, disable OCR functionality if not available
 ocr_available = True
@@ -20,6 +21,10 @@ st.markdown("""
         .stButton>button { background-color: #00AAFF; color: white; }
     </style>
 """, unsafe_allow_html=True)
+
+# Create temp directory if it doesn't exist
+TEMP_DIR = "temp"
+os.makedirs(TEMP_DIR, exist_ok=True)
 
 # Main title
 st.title("📑 PDF OCR Tool")
@@ -60,9 +65,10 @@ if ocr_available and ocr_file and (st.session_state.ocr_processed_name != ocr_fi
         status_text.text("Starting OCR process...")
         progress_bar.progress(10)
         
-        # Save uploaded file temporarily
-        temp_input = f"temp_{ocr_file.name}"
-        temp_output = f"temp_ocr_{ocr_file.name}"
+        # Generate unique filenames with UUID
+        unique_id = str(uuid.uuid4())
+        temp_input = os.path.join(TEMP_DIR, f"{unique_id}_input_{ocr_file.name}")
+        temp_output = os.path.join(TEMP_DIR, f"{unique_id}_output_{ocr_file.name}")
         
         # Save uploaded file
         with open(temp_input, "wb") as f:
