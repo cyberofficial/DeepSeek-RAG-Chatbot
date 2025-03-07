@@ -60,11 +60,18 @@ st.markdown("""
             padding: 10px;
             border-radius: 5px;
             margin: 5px 0;
+            display: block;
+        }
+        .st-emotion-cache-acwcvw{
+            background-color: gray;   
         }
         details summary {
             cursor: pointer;
             color: #00AAFF;
             font-weight: bold;
+        }
+        .thinking-section summary {
+            color: #808080;
         }
         details[open] summary {
             margin-bottom: 10px;
@@ -258,32 +265,63 @@ st.title("🤖 DeepGraph RAG-Pro")
 st.caption("Advanced RAG System with GraphRAG, Hybrid Retrieval, Neural Reranking and Chat History")
 
 # Display messages
-def format_thinking_sections(content):
+def format_sections(content):
     formatted = content
-    thinking_start = formatted.find("<think>")
     
+    # Format thinking sections
+    thinking_start = formatted.find("<think>")
     while thinking_start != -1:
         thinking_end = formatted.find("</think>", thinking_start)
         if thinking_end != -1:
             think_content = formatted[thinking_start + 7:thinking_end]
-            # Get the stored time if available, otherwise use 0.00
             think_elapsed = st.session_state.final_think_times.get(thinking_start, 0.00)
-            
             formatted = (
                 formatted[:thinking_start] +
-                f'<details><summary>Thinking Process ({think_elapsed:.2f}s)</summary><pre style="white-space: pre-wrap; font-family: monospace;">{think_content}</pre></details>' +
+                f'<details class="thinking-section"><summary>Thinking Process ({think_elapsed:.2f}s)</summary><pre style="white-space: pre-wrap; font-family: monospace;">{think_content}</pre></details>' +
                 formatted[thinking_end + 8:]
             )
             thinking_start = formatted.find("<think>")
         else:
             break
+    
+    # Format GraphRAG sections
+    sections = [
+        ("Searching GraphRAG for", "GraphRAG Search"),
+        ("GraphRAG Matched Nodes", "GraphRAG Matches"),
+        ("GraphRAG Retrieved Related Nodes", "Related Nodes"),
+        ("GraphRAG Retrieved Nodes", "Retrieved Nodes")
+    ]
+    
+    for search_text, display_text in sections:
+        section_start = formatted.find(search_text)
+        while section_start != -1:
+            next_section = float('inf')
+            # Find the start of the next section or the end of the content
+            for other_text, _ in sections:
+                next_pos = formatted.find(other_text, section_start + len(search_text))
+                if next_pos != -1 and next_pos < next_section:
+                    next_section = next_pos
+                    
+            if next_section == float('inf'):
+                section_end = len(formatted)
+            else:
+                section_end = next_section
+                
+            section_content = formatted[section_start:section_end]
+            formatted = (
+                formatted[:section_start] +
+                f'<details class="graphrag-section"><summary>{display_text}</summary><pre style="white-space: pre-wrap; font-family: monospace;">{section_content}</pre></details>' +
+                formatted[section_end:]
+            )
+            section_start = formatted.find(search_text, section_start + len(display_text))
+    
     return formatted
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         content = message["content"]
         if message["role"] == "assistant":
-            content = format_thinking_sections(content)
+            content = format_sections(content)
         st.markdown(content, unsafe_allow_html=True)
 
 if prompt := st.chat_input("Ask about your documents..."):
@@ -354,41 +392,25 @@ if prompt := st.chat_input("Ask about your documents..."):
                     token = data.get("response", "")
                     full_response += token
                     
-                    # Format the response to make thinking sections collapsible
-                    formatted_response = full_response
-                    thinking_start = formatted_response.find("<think>")
-                    
-                    while thinking_start != -1:
-                        # Store start time if this is a new thinking section
-                        if thinking_start not in thinking_times:
-                            thinking_times[thinking_start] = time.time()
-                            
-                        thinking_end = formatted_response.find("</think>", thinking_start)
-                        if thinking_end != -1:
-                            # Get the thinking content
-                            think_content = formatted_response[thinking_start + 7:thinking_end]
-                            
-                            # Calculate and store the final time for this section if not already stored
-                            if thinking_start not in st.session_state.get('final_think_times', {}):
-                                if 'final_think_times' not in st.session_state:
-                                    st.session_state.final_think_times = {}
-                                st.session_state.final_think_times[thinking_start] = time.time() - thinking_times[thinking_start]
-                            
-                            # Use the stored final time
-                            think_elapsed = st.session_state.final_think_times[thinking_start]
-                            
-                            # Replace the thinking section with collapsible HTML including timing
-                            # Wrap the content in a pre tag to preserve formatting
-                            formatted_response = (
-                                formatted_response[:thinking_start] +
-                                f'<details><summary>Thinking Process ({think_elapsed:.2f}s)</summary><pre style="white-space: pre-wrap; font-family: monospace;">{think_content}</pre></details>' +
-                                formatted_response[thinking_end + 8:]
-                            )
-                            
-                            # Look for next thinking section
-                            thinking_start = formatted_response.find("<think>")
+                    # Store start time if this is a new thinking section
+                    thinking_start = full_response.find("<think>")
+                    if thinking_start != -1 and thinking_start not in thinking_times:
+                        thinking_times[thinking_start] = time.time()
+                        
+                    # Calculate and store timing for any completed thinking sections
+                    current_think_start = full_response.find("<think>")
+                    while current_think_start != -1:
+                        current_think_end = full_response.find("</think>", current_think_start)
+                        if current_think_end != -1 and current_think_start not in st.session_state.get('final_think_times', {}):
+                            if 'final_think_times' not in st.session_state:
+                                st.session_state.final_think_times = {}
+                            st.session_state.final_think_times[current_think_start] = time.time() - thinking_times[current_think_start]
+                            current_think_start = full_response.find("<think>", current_think_end)
                         else:
                             break
+                            
+                    # Format both thinking and GraphRAG sections
+                    formatted_response = format_sections(full_response)
                     
                     # Display the formatted response
                     response_placeholder.markdown(formatted_response + "▌", unsafe_allow_html=True)
@@ -404,3 +426,4 @@ if prompt := st.chat_input("Ask about your documents..."):
         except Exception as e:
             st.error(f"Generation error: {str(e)}")
             st.session_state.messages.append({"role": "assistant", "content": "Sorry, I encountered an error."})
+
