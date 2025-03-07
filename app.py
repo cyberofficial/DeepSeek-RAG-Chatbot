@@ -69,6 +69,14 @@ st.markdown("""
         details[open] summary {
             margin-bottom: 10px;
         }
+        details pre {
+            color: #e0e0e0;
+            background-color: #1e1e1e;
+            padding: 8px;
+            border-radius: 4px;
+            margin: 5px 0;
+            overflow-x: auto;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -200,9 +208,33 @@ st.title("🤖 DeepGraph RAG-Pro")
 st.caption("Advanced RAG System with GraphRAG, Hybrid Retrieval, Neural Reranking and Chat History")
 
 # Display messages
+def format_thinking_sections(content):
+    formatted = content
+    thinking_start = formatted.find("<think>")
+    
+    while thinking_start != -1:
+        thinking_end = formatted.find("</think>", thinking_start)
+        if thinking_end != -1:
+            think_content = formatted[thinking_start + 7:thinking_end]
+            # Get the stored time if available, otherwise use 0.00
+            think_elapsed = st.session_state.final_think_times.get(thinking_start, 0.00)
+            
+            formatted = (
+                formatted[:thinking_start] +
+                f'<details><summary>Thinking Process ({think_elapsed:.2f}s)</summary><pre style="white-space: pre-wrap; font-family: monospace;">{think_content}</pre></details>' +
+                formatted[thinking_end + 8:]
+            )
+            thinking_start = formatted.find("<think>")
+        else:
+            break
+    return formatted
+
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+        content = message["content"]
+        if message["role"] == "assistant":
+            content = format_thinking_sections(content)
+        st.markdown(content, unsafe_allow_html=True)
 
 if prompt := st.chat_input("Ask about your documents..."):
     # Reset think times for new conversation
@@ -296,9 +328,10 @@ if prompt := st.chat_input("Ask about your documents..."):
                             think_elapsed = st.session_state.final_think_times[thinking_start]
                             
                             # Replace the thinking section with collapsible HTML including timing
+                            # Wrap the content in a pre tag to preserve formatting
                             formatted_response = (
                                 formatted_response[:thinking_start] +
-                                f'<details><summary>Thinking Process ({think_elapsed:.2f}s)</summary>{think_content}</details>' +
+                                f'<details><summary>Thinking Process ({think_elapsed:.2f}s)</summary><pre style="white-space: pre-wrap; font-family: monospace;">{think_content}</pre></details>' +
                                 formatted_response[thinking_end + 8:]
                             )
                             
