@@ -31,7 +31,7 @@ load_dotenv(find_dotenv())  # Loads .env file contents into the application base
 OLLAMA_BASE_URL = os.getenv("OLLAMA_API_URL", "http://localhost:11434")
 OLLAMA_API_URL = f"{OLLAMA_BASE_URL}/api/generate"
 MODEL= os.getenv("MODEL", "deepseek-r1:7b")                                                      #Make sure you have it installed in ollama
-EMBEDDINGS_MODEL = "nomic-embed-text:latest"
+EMBEDDINGS_MODEL = "mxbai-embed-large"
 CROSS_ENCODER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -257,6 +257,7 @@ if prompt := st.chat_input("Ask about your documents..."):
                 "model": MODEL,
                 "prompt": system_prompt,
                 "stream": True,
+                "keep_alive": "10m",
                 "options": {
                     "temperature": st.session_state.temperature,  # Use dynamic user-selected value
                     "num_ctx": st.session_state.num_ctx
