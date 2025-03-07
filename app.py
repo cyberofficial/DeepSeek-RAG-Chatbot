@@ -175,6 +175,12 @@ with st.sidebar:                                                                
     st.session_state.temperature = st.slider("Temperature", 0.0, 1.0, 0.3, 0.05)
     st.session_state.max_contexts = st.slider("Max Contexts", 1, 5, 3)
     
+    if st.button("Reset Embeddings"):
+        st.session_state.retrieval_pipeline = None
+        st.session_state.documents_loaded = False
+        st.success("Embeddings have been reset. You can now upload new documents.")
+        st.rerun()
+
     if st.button("Clear Chat History"):
         st.session_state.messages = []
         st.rerun()
