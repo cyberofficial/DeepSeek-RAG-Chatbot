@@ -11,7 +11,7 @@ import os
 import re
 
 
-def process_documents(uploaded_files, reranker, embedding_model, base_url, progress_bar=None, status_text=None):
+def process_documents(uploaded_files, reranker, embedding_model, base_url, chunk_size=1000, chunk_overlap=200, progress_bar=None, status_text=None):
     if st.session_state.documents_loaded:
         return
 
@@ -61,8 +61,8 @@ def process_documents(uploaded_files, reranker, embedding_model, base_url, progr
     update_progress("Splitting text into chunks...")
     # Text splitting
     text_splitter = CharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200,
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
         separator="\n"
     )
     texts = text_splitter.split_documents(documents)

@@ -100,7 +100,10 @@ if "ocr_available" not in st.session_state:
     st.session_state.ocr_available = ocr_available
 if "num_ctx" not in st.session_state:
     st.session_state.num_ctx = 4096
-
+if "chunk_size" not in st.session_state:
+    st.session_state.chunk_size = 1000
+if "chunk_overlap" not in st.session_state:
+    st.session_state.chunk_overlap = 200
 
 with st.sidebar:                                                                        # 📁 Sidebar
     st.header("📁 Document Management")
@@ -125,6 +128,8 @@ with st.sidebar:                                                                
                 reranker,
                 EMBEDDINGS_MODEL,
                 OLLAMA_BASE_URL,
+                chunk_size=st.session_state.chunk_size,
+                chunk_overlap=st.session_state.chunk_overlap,
                 progress_bar=progress_bar,
                 status_text=status_text
             )
@@ -146,7 +151,7 @@ with st.sidebar:                                                                
     if st.session_state.ocr_available and ocr_file and (st.session_state.ocr_processed_name != ocr_file.name):
         try:
             # Save uploaded file temporarily
-            with st.spinner("Processing OCR..."):
+            with st.spinner("Processing OCR, this will take a while..."):
                 temp_input = f"temp_{ocr_file.name}"
                 temp_output = f"temp_ocr_{ocr_file.name}"
                 
@@ -190,7 +195,14 @@ with st.sidebar:                                                                
                 
                 # Process the file with document management
                 try:
-                    process_documents([custom_file], reranker, EMBEDDINGS_MODEL, OLLAMA_BASE_URL)
+                    process_documents(
+                        [custom_file],
+                        reranker,
+                        EMBEDDINGS_MODEL,
+                        OLLAMA_BASE_URL,
+                        chunk_size=st.session_state.chunk_size,
+                        chunk_overlap=st.session_state.chunk_overlap
+                    )
                     st.success("OCR'd PDF added to document management!")
                     st.session_state.documents_loaded = True
                 except Exception as e:
@@ -198,6 +210,23 @@ with st.sidebar:                                                                
     
     st.markdown("---")
     st.header("⚙️ RAG Settings")
+    
+    # Document Processing Settings
+    with st.expander("📄 Document Processing Settings", expanded=False):
+        st.session_state.chunk_size = st.number_input(
+            "Chunk Size",
+            value=1000,
+            min_value=100,
+            max_value=8192,
+            help="Size of text chunks in characters. Larger chunks provide more context but use more tokens."
+        )
+        st.session_state.chunk_overlap = st.number_input(
+            "Chunk Overlap",
+            value=200,
+            min_value=0,
+            max_value=st.session_state.chunk_size - 100,
+            help="Number of characters that overlap between chunks to maintain context continuity."
+        )
     
     st.session_state.rag_enabled = st.checkbox("Enable RAG", value=True)
     st.session_state.enable_hyde = st.checkbox("Enable HyDE", value=True)
