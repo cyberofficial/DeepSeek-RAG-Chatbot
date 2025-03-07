@@ -7,9 +7,15 @@ from utils.doc_handler import process_documents
 from sentence_transformers import CrossEncoder
 import torch
 import os
-import ocrmypdf
 from io import BytesIO
 from dotenv import load_dotenv, find_dotenv
+
+# Try to import ocrmypdf, disable OCR functionality if not available
+ocr_available = True
+try:
+    import ocrmypdf
+except ImportError:
+    ocr_available = False
 
 # Custom class to mimic StreamlitUploadedFile
 class CustomUploadedFile:
@@ -82,6 +88,8 @@ if "ocr_processed_name" not in st.session_state:
     st.session_state.ocr_processed_name = None
 if "final_think_times" not in st.session_state:
     st.session_state.final_think_times = {}
+if "ocr_available" not in st.session_state:
+    st.session_state.ocr_available = ocr_available
 
 
 with st.sidebar:                                                                        # 📁 Sidebar
@@ -99,9 +107,12 @@ with st.sidebar:                                                                
     
     st.markdown("---")
     st.header("📑 PDF OCR")
-    ocr_file = st.file_uploader("Upload PDF for OCR", type=["pdf"], key="ocr_upload")
+    if st.session_state.ocr_available:
+        ocr_file = st.file_uploader("Upload PDF for OCR", type=["pdf"], key="ocr_upload")
+    else:
+        st.error("PDF OCR functionality is not available. Please install ocrmypdf package to enable this feature.")
     
-    if ocr_file and (st.session_state.ocr_processed_name != ocr_file.name):
+    if st.session_state.ocr_available and ocr_file and (st.session_state.ocr_processed_name != ocr_file.name):
         try:
             # Save uploaded file temporarily
             with st.spinner("Processing OCR..."):
