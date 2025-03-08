@@ -50,18 +50,22 @@ st.markdown("""
     <script type="text/javascript">
         window.MathJax = {
             tex: {
-                inlineMath: [['$','$'], ['\\(','\\)']],
-                displayMath: [['$$','$$'], ['\\[','\\]']],
+                inlineMath: [['$','$']],
+                displayMath: [['$$','$$']],
                 processEscapes: true,
-                processEnvironments: true
+                processEnvironments: true,
+                packages: ['base', 'ams', 'noerrors', 'noundefined']
             },
             svg: {
                 fontCache: 'global'
+            },
+            startup: {
+                typeset: true
             }
         };
     </script>
     <script type="text/javascript" id="MathJax-script" async
-        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
     </script>
 """, unsafe_allow_html=True)
 
@@ -464,17 +468,19 @@ if prompt := st.chat_input("Ask about your documents..."):
         
         # 🚀 Structured Prompt
         latex_examples = """
-1. Inline math: Use $$...$$ for inline equations
-   Examples: $$E = mc^2$$, $$\\sqrt{x^2 + y^2}$, $f(x) = ax^2 + bx + c$$
-2. Display math: Use $$...$$ for centered equations
+1. Inline math: Use $...$ for inline equations
+   Examples: $E = mc^2$, $\\sqrt{x^2 + y^2}$, $f(x) = ax^2 + bx + c$
+2. Display math: Use $$....$$ for centered equations
    Example:
-   $$F(x) = \\int_{-\\infty}^x f(t) dt$$
+   $$
+   F(x) = \\int_{-\\infty}^x f(t) dt
+   $$
 3. Common notation:
-   - Fractions: $$\\frac{numerator}{denominator}$$
-   - Subscripts: $$x_1, x_2, x_n$$
-   - Superscripts: $$x^2, e^x$$
-   - Greek letters: $$\\alpha, \\beta, \\gamma, \\theta$$
-   - Sums and products: $$\\sum_{i=1}^n x_i$, $\\prod_{i=1}^n x_i$$"""
+   - Fractions: $\\frac{numerator}{denominator}$
+   - Subscripts: $x_1$, $x_2$, $x_n$
+   - Superscripts: $x^2$, $e^x$
+   - Greek letters: $\\alpha$, $\\beta$, $\\gamma$, $\\theta$
+   - Sums and products: $\\sum_{i=1}^n x_i$, $\\prod_{i=1}^n x_i$"""
 
         system_prompt = f"""Use the chat history to maintain context:
             Chat History:
