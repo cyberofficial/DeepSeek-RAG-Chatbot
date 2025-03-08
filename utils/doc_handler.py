@@ -15,6 +15,7 @@ from langchain_ollama import OllamaEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_community.retrievers import BM25Retriever
 from langchain.retrievers import EnsembleRetriever
+from langchain.schema import Document
 from utils.build_graph import build_knowledge_graph
 from rank_bm25 import BM25Okapi
 import os
@@ -22,11 +23,13 @@ import re
 
 
 def process_documents(uploaded_files, reranker, embedding_model, base_url, chunk_size=1000, chunk_overlap=200, progress_bar=None, status_text=None):
-    if st.session_state.documents_loaded:
-        return
-
     st.session_state.processing = True
+    
+    # Initialize documents list with existing documents if available
     documents = []
+    if st.session_state.get("retrieval_pipeline") and st.session_state.get("documents_loaded"):
+        existing_texts = st.session_state.retrieval_pipeline.get("texts", [])
+        documents = [Document(page_content=text) for text in existing_texts]
     total_steps = 6  # Total number of major processing steps
     current_step = 0
     

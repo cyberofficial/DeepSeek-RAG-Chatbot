@@ -152,7 +152,7 @@ with st.sidebar:                                                                
         accept_multiple_files=True
     )
     
-    if uploaded_files and not st.session_state.documents_loaded:
+    if uploaded_files:  # Allow processing new files even if documents are already loaded
         # Check for blocked file types
         blocked_files = [f.name for f in uploaded_files if os.path.splitext(f.name.lower())[1] in BLOCKED_EXTENSIONS]
         if blocked_files:
@@ -187,32 +187,6 @@ with st.sidebar:                                                                
                 # Clean up progress indicators
                 progress_bar.empty()
                 status_text.empty()
-        # Create columns for progress bar and status
-        progress_col, status_col = st.columns([2, 3])
-        
-        with progress_col:
-            progress_bar = st.progress(0)
-        with status_col:
-            status_text = st.empty()
-            
-        try:
-            process_documents(
-                uploaded_files,
-                reranker,
-                EMBEDDINGS_MODEL,
-                OLLAMA_BASE_URL,
-                chunk_size=st.session_state.chunk_size,
-                chunk_overlap=st.session_state.chunk_overlap,
-                progress_bar=progress_bar,
-                status_text=status_text
-            )
-            st.success("✅ Documents processed successfully!")
-        except Exception as e:
-            st.error(f"❌ Error processing documents: {str(e)}")
-        finally:
-            # Clean up progress indicators
-            progress_bar.empty()
-            status_text.empty()
     
     st.markdown("---")
     st.header("📑 PDF OCR")
