@@ -417,7 +417,30 @@ if prompt := st.chat_input("Ask about your documents..."):
     # Reset think times for new conversation
     st.session_state.final_think_times = {}
     
-    chat_history = "\n".join([msg["content"] for msg in st.session_state.messages[-5:]])  # Last 5 messages
+    # Only use messages from the current conversation
+    current_conversation = []
+    for msg in st.session_state.messages[::-1]:  # Reverse to get latest messages first
+        if msg["role"] == "user" and msg["content"] == prompt:
+            break
+        content = msg["content"]
+        # Strip out RAG-related sections for assistant messages
+        if msg["role"] == "assistant":
+            for section in ["GraphRAG Search", "GraphRAG Matches", "Related Nodes", "Retrieved Nodes"]:
+                section_start = content.find(section)
+                if section_start != -1:
+                    next_section_start = float('inf')
+                    for next_section in ["GraphRAG Search", "GraphRAG Matches", "Related Nodes", "Retrieved Nodes"]:
+                        pos = content.find(next_section, section_start + len(section))
+                        if pos != -1 and pos < next_section_start:
+                            next_section_start = pos
+                    if next_section_start == float('inf'):
+                        content = content[:section_start].strip()
+                    else:
+                        content = content[:section_start].strip() + "\n" + content[next_section_start:].strip()
+        current_conversation.insert(0, {"role": msg["role"], "content": content})
+    
+    # Take last 5 messages from current conversation
+    chat_history = "\n".join([msg["content"] for msg in current_conversation[-5:]])
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
