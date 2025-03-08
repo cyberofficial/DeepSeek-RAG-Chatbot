@@ -137,6 +137,8 @@ if "chunk_size" not in st.session_state:
     st.session_state.chunk_size = 1000
 if "chunk_overlap" not in st.session_state:
     st.session_state.chunk_overlap = 200
+if "current_files" not in st.session_state:
+    st.session_state.current_files = []
 
 with st.sidebar:                                                                        # 📁 Sidebar
     st.header("📁 Document Management")
@@ -152,7 +154,13 @@ with st.sidebar:                                                                
         accept_multiple_files=True
     )
     
-    if uploaded_files:  # Allow processing new files even if documents are already loaded
+    # Clear current_files if no files are uploaded
+    if not uploaded_files:
+        st.session_state.current_files = []
+    # Process files only if they've changed
+    elif [f.name for f in uploaded_files] != st.session_state.current_files:
+        # Update list of current files
+        st.session_state.current_files = [f.name for f in uploaded_files]
         # Check for blocked file types
         blocked_files = [f.name for f in uploaded_files if os.path.splitext(f.name.lower())[1] in BLOCKED_EXTENSIONS]
         if blocked_files:
