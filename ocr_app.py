@@ -55,7 +55,7 @@ if ocr_available:
 else:
     st.error("PDF OCR functionality is not available. Please install ocrmypdf package to enable this feature.")
 
-if ocr_available and ocr_file and (st.session_state.ocr_processed_name != ocr_file.name) and not st.session_state.get('clearing', False):
+if ocr_available and ocr_file and (st.session_state.ocr_processed_name != ocr_file.name):
     try:
         # Create a progress bar
         progress_bar = st.progress(0)
@@ -151,3 +151,5 @@ if st.session_state.ocr_processed_pdf is not None:
 # Reset clearing flag at the start of next run
 if st.session_state.get('clearing'):
     st.session_state.clearing = False
+    # Force rerun to ensure clean state
+    st.rerun()
