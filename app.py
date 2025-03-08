@@ -131,6 +131,8 @@ if "ocr_available" not in st.session_state:
     st.session_state.ocr_available = ocr_available
 if "num_ctx" not in st.session_state:
     st.session_state.num_ctx = 4096
+if "chat_history_limit" not in st.session_state:
+    st.session_state.chat_history_limit = 5
 if "chunk_size" not in st.session_state:
     st.session_state.chunk_size = 1000
 if "chunk_overlap" not in st.session_state:
@@ -305,6 +307,7 @@ with st.sidebar:                                                                
     st.session_state.enable_graph_rag = st.checkbox("Enable GraphRAG", value=True)
     st.session_state.temperature = st.slider("Temperature", 0.0, 1.0, 0.3, 0.05)
     st.session_state.max_contexts = st.number_input("Max Contexts", value=3, min_value=1, help="Number of context passages to retrieve")
+    st.session_state.chat_history_limit = st.number_input("Chat History Messages", value=5, min_value=1, max_value=20, help="Number of previous messages to keep in chat history")
     st.session_state.num_ctx = st.number_input("Context Window Size", value=4096, min_value=512, help="Size of the model's context window (in tokens)")
     
     if st.button("Reset Embeddings"):
@@ -483,8 +486,8 @@ if prompt := st.chat_input("Ask about your documents..."):
                         content = content[:section_start].strip() + "\n" + content[next_section_start:].strip()
         current_conversation.insert(0, {"role": msg["role"], "content": content})
     
-    # Take last 5 messages from current conversation
-    chat_history = "\n".join([msg["content"] for msg in current_conversation[-5:]])
+    # Take last n messages from current conversation based on user setting
+    chat_history = "\n".join([msg["content"] for msg in current_conversation[-st.session_state.chat_history_limit:]])
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
