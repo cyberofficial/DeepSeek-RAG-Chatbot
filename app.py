@@ -138,13 +138,53 @@ if "chunk_overlap" not in st.session_state:
 
 with st.sidebar:                                                                        # 📁 Sidebar
     st.header("📁 Document Management")
+    # Define blocked file extensions for security
+    BLOCKED_EXTENSIONS = {
+        '.exe', '.dll', '.so', '.dylib', '.bat', '.cmd', '.sh', '.com',
+        '.msi', '.sys', '.vbs', '.ps1', '.jar', '.bin'
+    }
+
     uploaded_files = st.file_uploader(
-        "Upload documents (PDF/DOCX/TXT)",
-        type=["pdf", "docx", "txt"],
+        "Upload any document",
+        type=None,  # Allow all file types
         accept_multiple_files=True
     )
     
     if uploaded_files and not st.session_state.documents_loaded:
+        # Check for blocked file types
+        blocked_files = [f.name for f in uploaded_files if os.path.splitext(f.name.lower())[1] in BLOCKED_EXTENSIONS]
+        if blocked_files:
+            st.error(f"❌ Cannot process executable or binary files for security reasons: {', '.join(blocked_files)}")
+            st.session_state.documents_loaded = False
+            uploaded_files = [f for f in uploaded_files if os.path.splitext(f.name.lower())[1] not in BLOCKED_EXTENSIONS]
+            
+        if uploaded_files:  # Process remaining files if any
+            # Create columns for progress bar and status
+            progress_col, status_col = st.columns([2, 3])
+            
+            with progress_col:
+                progress_bar = st.progress(0)
+            with status_col:
+                status_text = st.empty()
+                
+            try:
+                process_documents(
+                    uploaded_files,
+                    reranker,
+                    EMBEDDINGS_MODEL,
+                    OLLAMA_BASE_URL,
+                    chunk_size=st.session_state.chunk_size,
+                    chunk_overlap=st.session_state.chunk_overlap,
+                    progress_bar=progress_bar,
+                    status_text=status_text
+                )
+                st.success("✅ Documents processed successfully!")
+            except Exception as e:
+                st.error(f"❌ Error processing documents: {str(e)}")
+            finally:
+                # Clean up progress indicators
+                progress_bar.empty()
+                status_text.empty()
         # Create columns for progress bar and status
         progress_col, status_col = st.columns([2, 3])
         

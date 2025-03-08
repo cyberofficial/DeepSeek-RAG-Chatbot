@@ -1,5 +1,15 @@
 import streamlit as st
-from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader, TextLoader
+from langchain_community.document_loaders import (
+    PyPDFLoader,
+    Docx2txtLoader,
+    TextLoader,
+    CSVLoader,
+    JSONLoader,
+    UnstructuredHTMLLoader,
+    UnstructuredMarkdownLoader,
+    UnstructuredRTFLoader,
+    UnstructuredXMLLoader
+)
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings
 from langchain_community.vectorstores import FAISS
@@ -41,14 +51,50 @@ def process_documents(uploaded_files, reranker, embedding_model, base_url, chunk
             with open(file_path, "wb") as f:
                 f.write(file.getbuffer())
 
-            if file.name.endswith(".pdf"):
-                loader = PyPDFLoader(file_path)
-            elif file.name.endswith(".docx"):
-                loader = Docx2txtLoader(file_path)
-            elif file.name.endswith(".txt"):
-                loader = TextLoader(file_path)
+            file_extension = os.path.splitext(file.name.lower())[1]
+            
+            loaders = {
+                '.pdf': PyPDFLoader,
+                '.docx': Docx2txtLoader,
+                '.txt': TextLoader,
+                '.csv': CSVLoader,
+                '.json': JSONLoader,
+                '.html': UnstructuredHTMLLoader,
+                '.htm': UnstructuredHTMLLoader,
+                '.md': UnstructuredMarkdownLoader,
+                '.rtf': UnstructuredRTFLoader,
+                '.xml': UnstructuredXMLLoader
+            }
+            
+            if file_extension in loaders:
+                loader = loaders[file_extension](file_path)
             else:
-                continue
+                # Try to process any other file type as raw text
+                st.info(f"Attempting to process {file.name} as raw text")
+                try:
+                    loader = TextLoader(file_path, encoding='utf-8', autodetect_encoding=True)
+                except Exception as e:
+                    st.warning(f"Could not process {file.name} as text: {str(e)}. Attempting binary read...")
+                    # Last resort: try to read file as binary and convert to text
+                    try:
+                        with open(file_path, 'rb') as f:
+                            content = f.read()
+                            # Try to decode as text, replacing invalid characters
+                            text_content = content.decode('utf-8', errors='replace')
+                        # Create a temporary text file
+                        text_path = file_path + '.txt'
+                        with open(text_path, 'w', encoding='utf-8') as f:
+                            f.write(text_content)
+                        loader = TextLoader(text_path)
+                        st.success(f"Successfully processed {file.name} in binary mode")
+                        documents.extend(loader.load())
+                        # Clean up temporary files
+                        os.remove(text_path)
+                    except Exception as e:
+                        st.error(f"Failed to process {file.name}: {str(e)}")
+                        if os.path.exists(text_path):
+                            os.remove(text_path)
+                        continue
                 
             documents.extend(loader.load())
             os.remove(file_path)
