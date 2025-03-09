@@ -373,9 +373,9 @@ with st.sidebar:                                                                
 
     # 🚀 Footer (Bottom Right in Sidebar) For some Credits :)
     st.sidebar.markdown("""
-        <div style="position: absolute; top: 20px; right: 10px; font-size: 12px; color: gray;">
-            <b>Developed by:</b> N Sai Akhil &copy; All Rights Reserved 2025
-        </div>
+        
+            <b>Original Source Developed by:</b> N Sai Akhil &copy; All Rights Reserved 2025
+        
     """, unsafe_allow_html=True)
 
 # 💬 Chat Interface
