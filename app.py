@@ -142,11 +142,9 @@ if "current_files" not in st.session_state:
 
 with st.sidebar:                                                                        # 📁 Sidebar
     st.header("📁 Document Management")
-    # Define blocked file extensions for security
-    BLOCKED_EXTENSIONS = {
-        '.exe', '.dll', '.so', '.dylib', '.bat', '.cmd', '.sh', '.com',
-        '.msi', '.sys', '.vbs', '.ps1', '.jar', '.bin'
-    }
+    # Get whitelist and blacklist from environment
+    WHITELIST_EXTENSIONS = set(os.getenv('WHITELIST_EXTENSIONS', '').split(',')) if os.getenv('WHITELIST_EXTENSIONS') else None
+    BLOCKED_EXTENSIONS = set(os.getenv('BLOCKED_EXTENSIONS', '.exe,.dll,.so,.dylib,.bat,.cmd,.sh,.com,.msi,.sys,.vbs,.ps1,.jar,.bin').split(','))
 
     uploaded_files = st.file_uploader(
         "Upload any document",
@@ -161,12 +159,21 @@ with st.sidebar:                                                                
     elif [f.name for f in uploaded_files] != st.session_state.current_files:
         # Update list of current files
         st.session_state.current_files = [f.name for f in uploaded_files]
-        # Check for blocked file types
-        blocked_files = [f.name for f in uploaded_files if os.path.splitext(f.name.lower())[1] in BLOCKED_EXTENSIONS]
-        if blocked_files:
-            st.error(f"❌ Cannot process executable or binary files for security reasons: {', '.join(blocked_files)}")
-            st.session_state.documents_loaded = False
-            uploaded_files = [f for f in uploaded_files if os.path.splitext(f.name.lower())[1] not in BLOCKED_EXTENSIONS]
+        # Filter files based on extensions
+        if WHITELIST_EXTENSIONS:
+            # If whitelist is set, only allow those extensions
+            allowed_files = [f for f in uploaded_files if os.path.splitext(f.name.lower())[1] in WHITELIST_EXTENSIONS]
+            rejected_files = [f.name for f in uploaded_files if os.path.splitext(f.name.lower())[1] not in WHITELIST_EXTENSIONS]
+            if rejected_files:
+                st.error(f"❌ Only files with these extensions are allowed: {', '.join(WHITELIST_EXTENSIONS)}\nRejected files: {', '.join(rejected_files)}")
+            uploaded_files = allowed_files
+        else:
+            # Use blacklist if no whitelist is set
+            blocked_files = [f.name for f in uploaded_files if os.path.splitext(f.name.lower())[1] in BLOCKED_EXTENSIONS]
+            if blocked_files:
+                st.error(f"❌ Cannot process executable or binary files for security reasons: {', '.join(blocked_files)}")
+                st.session_state.documents_loaded = False
+                uploaded_files = [f for f in uploaded_files if os.path.splitext(f.name.lower())[1] not in BLOCKED_EXTENSIONS]
             
         if uploaded_files:  # Process remaining files if any
             # Create columns for progress bar and status
